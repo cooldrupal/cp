@@ -205,6 +205,8 @@ term_fox_brand: ## Terminus brand rollout: make term_fox_brand brand_id brand_ti
 	SET brand_title TO $(ARG_2);\
 	\
 	USE taxonomy_term.brand;\
+	SELECT tid WHERE machine_name = brand_@brand;\
+	IF @count > 0 THEN QUIT;\
 	CREATE brand_@brand, Brand @brand_title;\
 	SET brand_id to @id;\
 	REPLACE field_domain_access WITH @brand, field_domain_source WITH @brand, field_np_teaser_title WITH @brand_title, field_np_teaser_text WITH @brand_title, field_title WITH @brand_title, field_theme WITH @brand, field_layout WITH predefined;\
