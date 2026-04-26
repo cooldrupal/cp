@@ -196,7 +196,7 @@ fox_brand: ## Local brand installation
 	\
 	QUIT\
 	"		
-term_fox_brand: ## Terminus brand rollout: make term_fox_brand ascenda Ascenda dig0030342-baby-and-me-trinidad-tobago
+term_fox_brand: ## Terminus brand rollout: make term_fox_brand brand_id brand_title domain
 	$(MAKE) term_auth
 	terminus drush $(ARG_3).live -- en fox
 	
@@ -205,7 +205,7 @@ term_fox_brand: ## Terminus brand rollout: make term_fox_brand ascenda Ascenda d
 	SET brand_title TO $(ARG_2);\
 	\
 	USE taxonomy_term.brand;\
-	CREATE brand_@brand, Brand @brand;\
+	CREATE brand_@brand, Brand @brand_title;\
 	SET brand_id to @id;\
 	REPLACE field_domain_access WITH @brand, field_domain_source WITH @brand, field_np_teaser_title WITH @brand_title, field_np_teaser_text WITH @brand_title, field_title WITH @brand_title, field_theme WITH @brand, field_layout WITH predefined;\
 	\
@@ -250,26 +250,29 @@ term_fox_brand: ## Terminus brand rollout: make term_fox_brand ascenda Ascenda d
 	QUIT\
 	"
 	
-	@echo 'Set domain to these pages:'
+	@echo 'Set domain $(ARG_1) to these pages:'
 	terminus drush $(ARG_3).live -- cget system.site page.403
 	terminus drush $(ARG_3).live -- cget system.site page.404
 	terminus drush $(ARG_3).live -- cget cp_header_and_footer_blocks.header_settings search_page
 	@echo '✅ COMPLETE'
 	
-term_fox_brand_test: ## Terminus brand test: make term_fox_brand_test ascenda dig0030342-baby-and-me-trinidad-tobago
+term_fox_brand_test: ## Terminus brand test: brand_id brand_title domain
 	$(MAKE) term_auth
-	terminus drush $(ARG_2).live -- en fox
+	terminus drush $(ARG_3).live -- en fox
 	
-	terminus drush $(ARG_2).live -- fox --input="\
+	terminus drush $(ARG_3).live -- fox --input="\
 	SET brand TO $(ARG_1);\
+	SET brand_title TO $(ARG_2);\
 	\
-	USE node;\
-	SELECT nid WHERE field_domain_access = @brand INTO brand_content;\
+	SELECT nid FROM node WHERE field_domain_access = @brand INTO brand_content;\
 	TEST COUNT brand_content = 3 check brand content;\
 	SELECT id FROM menu_link_content.main WHERE menu_item_domains = @brand INTO data;\
 	TEST COUNT count = 1 check main menu;\
-	SELECT tid FROM taxonomy_term.brand WHERE machine_name = brand_@brand and status = 1 INTO data;\
+	SELECT tid FROM taxonomy_term.brand WHERE machine_name = brand_@brand AND status = 1 INTO data;\
 	TEST COUNT count = 1 check published brand;\
+	SELECT third_party_settings FROM domain WHERE name=@brand_title INTO domain;\
+	SELECT tid FROM taxonomy_term.brand WHERE tid=@domain.0.third_party_settings.cp_domain.domain_brand AND machine_name = brand_@brand AND status = 1 INTO brand_data;\
+	TEST COUNT count = 1 check domain referenced to brand;\
 	\
 	QUIT\
 	"
@@ -361,6 +364,4 @@ set_host: ## Set host
 	
 	$(MAKE) beep
 	@echo "✅ All done $(ARG_1)"
-
- 
  
