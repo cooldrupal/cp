@@ -156,53 +156,7 @@ fox_brand: ## Local brand installation
 	lando drush fox --input="\
 	SET brand TO $(ARG_1);\
 	SET brand_title TO $(ARG_2);\
-	\
-	USE taxonomy_term.brand;\
-	CREATE brand_@brand, Brand @brand;\
-	SET brand_id to @id;\
-	REPLACE field_domain_access WITH @brand, field_domain_source WITH @brand, field_np_teaser_title WITH @brand_title, field_np_teaser_text WITH @brand_title, field_title WITH @brand_title, field_theme WITH @brand, field_layout WITH predefined;\
-	\
-	USE cp_header_settings;\
-	SELECT settings LIMIT 1 INTO settings_header;\
-	SET settings_header.0.settings.back_main_enabled TO 1;\
-	APPEND id WITH @brand, label WITH @brand_title, settings with @settings_header.0.settings;\
-	REPLACE brand WITH @brand_id;\
-	\
-	USE cp_footer_settings;\
-	SELECT settings LIMIT 1 INTO settings_footer;\
-	SET settings_footer.0.settings.top_menu_label TO Popular pages;\
-	SET settings_footer.0.settings.top_menu TO footer-menu;\
-	SET settings_footer.0.settings.expanded_menu_label TO See mini sitemap;\
-	SET settings_footer.0.settings.expanded_menu TO mini-sitemap;\
-	SET settings_footer.0.settings.footer_copyright TO \"All trademarks are owned by Société des Produits Nestlé, S.A. or used with permission. © 2025. All rights reserved.\";\
-	SET settings_footer.0.settings.social_links TO footer;\
-	SET settings_footer.0.settings.global_brand_social_links TO footer;\
-	SET settings_footer.0.settings.show_disclaimer TO 1;\
-	SET settings_footer.0.settings.disclaimer_title TO Important notice;\
-	SET settings_footer.0.settings.disclaimer_text.value TO \"<p>We believe that breastfeeding is the ideal nutritional start for babies and we fully support the World Health Organization's recommendation of exclusive breastfeeding for the first six months of life followed by the introduction of adequate nutritious complementary foods along with continued breastfeeding up to two years of age. We also recognize that breastfeeding is not always an option for parents, we recommend that you speak to your healthcare professional about how to feed your baby and seek advice on when to introduce complementary feeding. If you choose not to breastfeed, please remember that such a decision can be difficult to reverse and has social and financial implications. Introducing partial bottle-feeding will reduce the supply of breast milk. Infant formula should always be prepared, used and stored as instructed on the label in order to avoid risks to a baby’s health.</p>\";\
-	SET settings_footer.0.settings.disclaimer_text.format TO rich_text;\
-	SET settings_footer.0.settings.global_brand_label TO @brand_title is part of Nestlé FamilyNes;\
-	APPEND id WITH @brand, label WITH @brand_title, settings WITH @settings_footer.0.settings;\
-	REPLACE brand WITH @brand_id;\
-	\
-	PRINT CREATED! TYPE success;\
-	PRINT Edit and publish /brand-@brand/taxonomy/term/@brand_id/edit;\
-	PRINT Edit /admin/config/consumer-platform/header-and-footer-blocks/header-settings/$(ARG_1);\
-	PRINT Edit /admin/config/consumer-platform/header-and-footer-blocks/footer-settings/$(ARG_1);\
-	PRINT Go to /admin/config/system/site-information?domain_config_ui_domain=$(ARG_1)&domain_config_ui_language= and set /brand-$(ARG_1);\
-	PRINT Go to /admin/config/system/shield?domain_config_ui_domain=$(ARG_1)&domain_config_ui_language=;\
-	PRINT Go to /admin/config/domain/edit/$(ARG_1);\
-	PRINT Go to /brand-$(ARG_1)/admin/structure/menu/manage/main;\
-	\
-	QUIT\
-	"		
-term_fox_brand: ## Terminus brand rollout: make term_fox_brand brand_id brand_title domain
-	$(MAKE) term_auth
-	terminus drush $(ARG_3).live -- en fox
-	
-	terminus drush $(ARG_3).live -- fox --input="\
-	SET brand TO $(ARG_1);\
-	SET brand_title TO $(ARG_2);\
+	SET brand_url TO $(ARG_3);\
 	\
 	USE taxonomy_term.brand;\
 	SELECT tid WHERE machine_name = brand_@brand;\
@@ -240,22 +194,79 @@ term_fox_brand: ## Terminus brand rollout: make term_fox_brand brand_id brand_ti
 	SET new_mvp_block TO @id;\
 	\
 	PRINT CREATED! TYPE success;\
-	PRINT Edit and publish /brand-@brand/taxonomy/term/@brand_id/edit;\
-	PRINT Edit /admin/config/consumer-platform/header-and-footer-blocks/header-settings/$(ARG_1);\
-	PRINT Edit /admin/config/consumer-platform/header-and-footer-blocks/footer-settings/$(ARG_1);\
-	PRINT Go to /admin/config/system/site-information?domain_config_ui_domain=$(ARG_1)&domain_config_ui_language= and set /brand-$(ARG_1);\
-	PRINT Go to /admin/config/system/shield?domain_config_ui_domain=$(ARG_1)&domain_config_ui_language=;\
-	PRINT Go to /admin/config/domain/edit/$(ARG_1);\
+	PRINT Edit and publish /brand-@brand_url/taxonomy/term/@brand_id/edit;\
+	PRINT Edit /admin/config/consumer-platform/header-and-footer-blocks/header-settings/@brand;\
+	PRINT Edit /admin/config/consumer-platform/header-and-footer-blocks/footer-settings/@brand;\
+	PRINT Go to /admin/config/system/site-information?domain_config_ui_domain=@brand&domain_config_ui_language= and set /brand-@brand_url;\
+	PRINT Go to /admin/config/system/shield?domain_config_ui_domain=@brand&domain_config_ui_language=;\
+	PRINT Go to /admin/config/domain/edit/@brand;\
 	PRINT Go to /admin/content/block/@new_mvp_block;\
-	PRINT Go to /brand-$(ARG_1)/admin/structure/menu/manage/main;\
+	PRINT Go to /brand-@brand_url/admin/structure/menu/manage/main;\
+	\
+	QUIT\
+	"
+
+term_fox_brand: ## Terminus brand rollout: make term_fox_brand brand_id brand_title domain
+	$(MAKE) term_auth
+	terminus drush $(ARG_4).live -- en fox
+	
+	terminus drush $(ARG_4).live -- fox --input="\
+	SET brand TO $(ARG_1);\
+	SET brand_title TO $(ARG_2);\
+	SET brand_url TO $(ARG_3);\
+	\
+	USE taxonomy_term.brand;\
+	SELECT tid WHERE machine_name = brand_@brand;\
+	IF @count > 0 THEN QUIT;\
+	CREATE brand_@brand, Brand @brand_title;\
+	SET brand_id to @id;\
+	REPLACE field_domain_access WITH @brand, field_domain_source WITH @brand, field_np_teaser_title WITH @brand_title, field_np_teaser_text WITH @brand_title, field_title WITH @brand_title, field_theme WITH @brand, field_layout WITH predefined;\
+	\
+	USE cp_header_settings;\
+	SELECT settings LIMIT 1 INTO settings_header;\
+	SET settings_header.0.settings.back_main_enabled TO 1;\
+	APPEND id WITH @brand, label WITH @brand_title, settings with @settings_header.0.settings;\
+	REPLACE brand WITH @brand_id;\
+	\
+	USE cp_footer_settings;\
+	SELECT settings LIMIT 1 INTO settings_footer;\
+	SET settings_footer.0.settings.top_menu_label TO Popular pages;\
+	SET settings_footer.0.settings.top_menu TO footer-menu;\
+	SET settings_footer.0.settings.expanded_menu_label TO See mini sitemap;\
+	SET settings_footer.0.settings.expanded_menu TO mini-sitemap;\
+	SET settings_footer.0.settings.footer_copyright TO \"All trademarks are owned by Société des Produits Nestlé, S.A. or used with permission. © 2025. All rights reserved.\";\
+	SET settings_footer.0.settings.social_links TO footer;\
+	SET settings_footer.0.settings.global_brand_social_links TO footer;\
+	SET settings_footer.0.settings.show_disclaimer TO 1;\
+	SET settings_footer.0.settings.disclaimer_title TO Important notice;\
+	SET settings_footer.0.settings.disclaimer_text.value TO \"<p>We believe that breastfeeding is the ideal nutritional start for babies and we fully support the World Health Organization's recommendation of exclusive breastfeeding for the first six months of life followed by the introduction of adequate nutritious complementary foods along with continued breastfeeding up to two years of age. We also recognize that breastfeeding is not always an option for parents, we recommend that you speak to your healthcare professional about how to feed your baby and seek advice on when to introduce complementary feeding. If you choose not to breastfeed, please remember that such a decision can be difficult to reverse and has social and financial implications. Introducing partial bottle-feeding will reduce the supply of breast milk. Infant formula should always be prepared, used and stored as instructed on the label in order to avoid risks to a baby’s health.</p>\";\
+	SET settings_footer.0.settings.disclaimer_text.format TO rich_text;\
+	SET settings_footer.0.settings.global_brand_label TO @brand_title is part of Nestlé FamilyNes;\
+	APPEND id WITH @brand, label WITH @brand_title, settings WITH @settings_footer.0.settings;\
+	REPLACE brand WITH @brand_id;\
+	\
+	USE block_content;\
+	SELECT id WHERE type=mvp_block ORDER BY id DESC LIMIT 1 INTO last_mvp_block;\
+	CLONE;REPLACE info WITH Join @brand_title;\
+	SET new_mvp_block TO @id;\
+	\
+	PRINT CREATED! TYPE success;\
+	PRINT Edit and publish /brand-@brand_url/taxonomy/term/@brand_id/edit;\
+	PRINT Edit /admin/config/consumer-platform/header-and-footer-blocks/header-settings/@brand;\
+	PRINT Edit /admin/config/consumer-platform/header-and-footer-blocks/footer-settings/@brand;\
+	PRINT Go to /admin/config/system/site-information?domain_config_ui_domain=@brand&domain_config_ui_language= and set /brand-@brand_url;\
+	PRINT Go to /admin/config/system/shield?domain_config_ui_domain=@brand&domain_config_ui_language=;\
+	PRINT Go to /admin/config/domain/edit/@brand;\
+	PRINT Go to /admin/content/block/@new_mvp_block;\
+	PRINT Go to /brand-@brand_url/admin/structure/menu/manage/main;\
 	\
 	QUIT\
 	"
 	
 	@echo 'Set domain $(ARG_1) to these pages:'
-	terminus drush $(ARG_3).live -- cget system.site page.403
-	terminus drush $(ARG_3).live -- cget system.site page.404
-	terminus drush $(ARG_3).live -- cget cp_header_and_footer_blocks.header_settings search_page
+	terminus drush $(ARG_4).live -- cget system.site page.403
+	terminus drush $(ARG_4).live -- cget system.site page.404
+	terminus drush $(ARG_4).live -- cget cp_header_and_footer_blocks.header_settings search_page
 	@echo '✅ COMPLETE'
 	
 term_fox_brand_test: ## Terminus brand test: brand_id brand_title domain
@@ -272,7 +283,7 @@ term_fox_brand_test: ## Terminus brand test: brand_id brand_title domain
 	TEST COUNT count = 1 check main menu;\
 	SELECT tid FROM taxonomy_term.brand WHERE machine_name = brand_@brand AND status = 1 INTO data;\
 	TEST COUNT count = 1 check published brand;\
-	SELECT third_party_settings FROM domain WHERE name=@brand_title INTO domain;\
+	SELECT third_party_settings FROM domain WHERE name = '@brand_title' INTO domain;\
 	SELECT tid FROM taxonomy_term.brand WHERE tid=@domain.0.third_party_settings.cp_domain.domain_brand AND machine_name = brand_@brand AND status = 1 INTO brand_data;\
 	TEST COUNT count = 1 check domain referenced to brand;\
 	\
