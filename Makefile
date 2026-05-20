@@ -290,6 +290,35 @@ term_fox_brand_test: ## Terminus brand test: brand_id brand_title domain
 	QUIT\
 	"
 
+fox_brand_migrate_test: ## Terminus brand migrate test: brand_id domain
+	lando drush fox --input="\
+	SET brand TO $(ARG_1);\
+	SET brand_title TO $(ARG_2);\
+	\
+	SELECT tid FROM taxonomy_term.brand WHERE field_domain_access = @brand AND status=1 AND name='Brand @brand_title' INTO brand_tid;\
+	IF @count = 0 THEN QUIT;\
+	\
+	SELECT name, field_domain_source,weight FROM taxonomy_term.brand WHERE field_domain_access = @brand AND field_domain_source IS NULL;\
+	TEST COUNT count = 0 check brand domain source;\
+	SELECT name, field_domain_source,weight FROM taxonomy_term.brand WHERE field_domain_access = @brand AND status=0;\
+	TEST COUNT count = 0 check unpublished brands;\
+	SELECT nid,title FROM node WHERE field_domain_access = @brand AND field_domain_source IS NULL;\
+	TEST COUNT count = 3 check nodes domain source;\
+	SELECT nid,title FROM node WHERE field_domain_access = @brand AND status=0;\
+	TEST COUNT count = 0 check unpublished nodes;\
+	\
+	SELECT brand FROM cp_header_settings WHERE id=@brand AND brand=@brand_tid.0.tid;\
+	TEST COUNT count = 1 check header brand;\
+	SELECT brand FROM cp_footer_settings WHERE id=@brand AND brand=@brand_tid.0.tid;\
+	TEST COUNT count = 1 check footer brand;\
+	\
+	SELECT third_party_settings FROM domain WHERE name=@brand_title INTO settings;\
+	SET domain_brand TO @settings.0.third_party_settings.cp_domain.domain_brand;\
+	TEST COUNT domain_brand = @brand_tid.0.tid check domain brand;\
+	\
+	QUIT\
+	"
+
 term_fox_disable: ## Terminus fox disable
 	$(MAKE) term_auth
 	
