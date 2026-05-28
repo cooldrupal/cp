@@ -290,8 +290,11 @@ term_fox_brand_test: ## Terminus brand test: brand_id brand_title domain
 	QUIT\
 	"
 
-fox_brand_migrate_test: ## Terminus brand migrate test: brand_id domain
-	lando drush fox --input="\
+term_fox_brand_migrate_test: ## Terminus brand migrate test: brand_id domain
+	$(MAKE) term_auth
+	terminus drush $(ARG_3).live -- en fox
+
+	terminus drush $(ARG_3).live -- fox --input="\
 	SET brand TO $(ARG_1);\
 	SET brand_title TO $(ARG_2);\
 	\

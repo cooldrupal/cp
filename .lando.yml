@@ -1,0 +1,131 @@
+name: consumer-platform
+recipe: pantheon
+
+config:
+  framework: drupal9
+  php_version: 8.3
+  site: consumer-platform
+  id: f96166ce-1ee0-4fdc-9683-adfe05657e41
+  xdebug: false
+  index: false #solr 3.6.2 disabled
+  edge: false #varnish
+  cache: true #redis
+  composer_version: "2.8.9"
+
+tooling:
+  push: disabled
+  switch: disabled
+  pull:
+    description: Pull things except code
+    options:
+      code:
+        default: none
+      files:
+        default: none
+  npm:
+    service: node
+  node:
+    service: node
+  gulp:
+    service: node
+  xdebug-on:
+    service: appserver
+    description: Enable xdebug for nginx.
+    cmd: docker-php-ext-enable xdebug && pkill -o -USR2 php-fpm 2> /dev/null
+    user: root
+  xdebug-off:
+    service: appserver
+    description: Disable xdebug for nginx.
+    cmd: rm -f /usr/local/etc/php/conf.d/docker-php-ext-xdebug.ini && pkill -o -USR2 php-fpm 2> /dev/null
+    user: root
+services:
+  database:
+    type: mariadb:10.6
+    portforward: true
+    creds:
+      user: pantheon
+      password: pantheon
+    overrides:
+      command:
+        - "mysqld"
+        - "--innodb_buffer_pool_size=512M"
+        - "--innodb_lock_wait_timeout=300"
+        - "--max_allowed_packet=128M"
+        - "--innodb_rollback_on_timeout=1"
+  appserver:
+    xdebug: false
+    build_as_root:
+      - apt-get update -y
+      - apt-get -y install libgmp-dev
+      - docker-php-ext-install gmp
+      - yes '' | pecl install mongodb-1.21.0
+      - echo "extension=mongodb.so" > $PHP_INI_DIR/conf.d/mongo.ini
+      - yes '' | pecl install imagick-3.8.0 && docker-php-ext-enable imagick
+    overrides:
+      environment:
+        # Support debugging Drush with XDEBUG.
+        PHP_IDE_CONFIG: "serverName=appserver"
+        PANTHEON_ENVIRONMENT: ""
+        PANTHEON_INDEX_HOST: search
+        PANTHEON_INDEX_PORT: 8983
+        XDEBUG_MODE: 'debug,develop'
+        XDEBUG_START_WITH_REQUEST: trigger
+        XDEBUG_TRIGGER: 1
+        XDEBUG_CONFIG: "discover_client_host=0 client_host=172.18.0.1 start_with_request=trigger log_level=0"
+        SIMPLETEST_BASE_URL: "https://consumer-platform.lndo.site/"
+        SIMPLETEST_DB: "sqlite://localhost/tmp/db.sqlite"
+        BROWSERTEST_OUTPUT_DIRECTORY: '/app/web/sites/simpletest/browser_output'
+        BROWSERTEST_OUTPUT_BASE_URL: 'https://consumer-platform.lndo.site'
+        MINK_DRIVER_ARGS_WEBDRIVER: '["chrome", {"browserName":"chrome","chromeOptions":{"args":["--disable-gpu","--headless", "--no-sandbox"]}}, "http://chrome:9515"]'
+        # Nightwatch
+        DRUPAL_TEST_BASE_URL: 'http://appserver'
+        DRUPAL_TEST_DB_URL: 'mysql://pantheon:pantheon@database:3306/pantheon'
+        DRUPAL_TEST_WEBDRIVER_HOSTNAME: chrome
+        DRUPAL_TEST_WEBDRIVER_PORT: 9515
+        DRUPAL_TEST_CHROMEDRIVER_AUTOSTART: 'false'
+        DRUPAL_TEST_WEBDRIVER_CHROME_ARGS: "--disable-gpu --headless --no-sandbox"
+        DRUPAL_NIGHTWATCH_OUTPUT: reports/nightwatch
+        DRUPAL_NIGHTWATCH_IGNORE_DIRECTORIES: node_modules,vendor,.*,sites/*/files,sites/*/private,sites/simpletest
+  chrome:
+    type: compose
+    app_mount: false
+    services:
+      image: drupalci/webdriver-chromedriver:production
+      command: chromedriver --log-path=/tmp/chromedriver.log --allowed-origins=* --verbose --whitelisted-ips=
+  node:
+    type: node:16
+    globals:
+      gulp-cli: latest
+  search:
+    type: solr:8.0.0
+    core: solr_drupal_core
+    portforward: true
+    config:
+      dir: tools/lando/solr/conf
+    overrides:
+      environment:
+        LANDO_SOLR_DATADIR: "/var/solr/data"
+        SOLR_JAVA_MEM: "-Xms1024m -Xmx1024m"
+  mailhog:
+    type: mailhog
+    portforward: true
+    hogfrom:
+      - appserver
+  adminer:
+    type: compose
+    services:
+      image: dehy/adminer
+      command: /bin/s6-svscan /etc/services.d
+    portforward: true
+  pma:
+    type: phpmyadmin
+
+proxy:
+  mailhog:
+    - mail.consumer-platform.lndo.site
+  adminer:
+    - adminer.consumer-platform.lndo.site
+  search:
+    - 'search.consumer-platform.lndo.site:8983'
+  appserver_nginx:
+    - consumer-platform.lndo.site
