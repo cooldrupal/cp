@@ -39,7 +39,7 @@ site: ## Install a site.
 
 	lando composer install
 	
-	#lando drush config:set locale.settings translation.import_enabled 0 -y
+	lando drush config:set locale.settings translation.import_enabled 0 -y
 	lando drush updb -y
 	lando drush cr
 
@@ -289,8 +289,8 @@ term_fox_brand_test: ## Terminus brand test: brand_id brand_title domain
 	\
 	QUIT\
 	"
-
-term_fox_brand_migrate_test: ## Terminus brand migrate test: brand_id domain
+	
+term_fox_brand_migrate: ## Terminus brand migrate: brand_id brand_title domain
 	$(MAKE) term_auth
 	terminus drush $(ARG_3).live -- en fox
 
@@ -298,7 +298,50 @@ term_fox_brand_migrate_test: ## Terminus brand migrate test: brand_id domain
 	SET brand TO $(ARG_1);\
 	SET brand_title TO $(ARG_2);\
 	\
-	SELECT tid FROM taxonomy_term.brand WHERE field_domain_access = @brand AND status=1 AND name='Brand @brand_title' INTO brand_tid;\
+	USE taxonomy_term.brand;\
+	PRINT 'Brand @brand_title';\
+	SELECT tid WHERE field_domain_access = @brand AND status = 0 AND name='Brand @brand_title' INTO brand_tid;\
+	IF @count <> 1 THEN QUIT;\
+	SET main_tid TO @brand_tid.0.tid;\
+	REPLACE field_domain_source WITH @brand;\
+	PRINT Changed the main brand (id=@main_tid) TYPE success;\
+	\
+	SELECT tid,machine_name WHERE field_domain_access = @brand AND status = 1 AND name='Brand @brand_title' INTO old_brand_tid;\
+	IF @count <> 1 THEN QUIT;\
+	REPLACE name WITH 'Brand @brand_title old', machine_name WITH brand_@brand_old;\
+	PRINT Changed the old brand TYPE success;\
+	\
+	SELECT tid WHERE field_domain_access = @brand AND status = 0 AND tid <> @main_tid INTO childs;\
+	REPLACE field_domain_source WITH @brand, parent WITH @main_tid FOR @childs;\
+	PRINT Replaced brands TYPE success;\
+	\
+	SELECT id FROM cp_header_settings WHERE id=@brand INTO header;\
+	IF @count = 1 THEN REPLACE brand with @main_tid FOR @header;\
+	PRINT Header brand replaced to @main_tid TYPE success;\
+	\
+	SELECT id FROM cp_footer_settings WHERE id=@brand INTO footer;\
+	IF @count = 1 THEN REPLACE brand with @main_tid FOR @footer;\
+	PRINT Footer brand replaced to @main_tid TYPE success;\
+	\
+	PRINT Change brand for /admin/config/domain/edit/@brand;\
+	PRINT Go to /admin/config/system/site-information?domain_config_ui_domain=@brand&domain_config_ui_language=;\
+	PRINT Go to /admin/content?title=&type=All&status=All&name=&langcode=All&field_domain_access_target_id=@brand&field_np_search_exclude_value=
+	\
+	PRINT FINISHED type success;\
+	QUIT\
+	"
+	
+	@echo '✅ COMPLETE';\
+
+term_fox_brand_migrate_test: ## Terminus brand migrate test: brand_id brand_title domain
+	$(MAKE) term_auth
+	terminus drush $(ARG_3).live -- en fox
+
+	terminus drush $(ARG_3).live -- fox --input="\
+	SET brand TO $(ARG_1);\
+	SET brand_title TO $(ARG_2);\
+	\
+	SELECT tid FROM taxonomy_term.brand WHERE field_domain_access = @brand AND status = 1 AND name='Brand @brand_title' INTO brand_tid;\
 	IF @count = 0 THEN QUIT;\
 	\
 	SELECT name, field_domain_source,weight FROM taxonomy_term.brand WHERE field_domain_access = @brand AND field_domain_source IS NULL;\
