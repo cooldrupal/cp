@@ -39,7 +39,7 @@ site: ## Install a site.
 
 	lando composer install
 	
-	lando drush config:set locale.settings translation.import_enabled 0 -y
+	#lando drush config:set locale.settings translation.import_enabled 0 -y
 	lando drush updb -y
 	lando drush cr
 
@@ -123,7 +123,7 @@ term_new: ## Terminus new user
 term_new_mdev: ## Terminus new user for multidev
 	$(MAKE) term_auth
 	terminus drush $(ARG_1).$(ARG_2) -- deploy
-	terminus drush $(ARG_1).$(ARG_2) -- cset tfa.settings enabled 0 -y
+	#terminus drush $(ARG_1).$(ARG_2) -- cset tfa.settings enabled 0 -y
 	terminus drush $(ARG_1).$(ARG_2) -- cp-domain:set-hostname --url=$(ARG_2)-$(ARG_1).pantheonsite.io -y
 	terminus drush $(ARG_1).$(ARG_2) -- user:create admin_multidev@test.com --mail="admin_multidev@test.com" --password="Admin_multidev2@test.com"
 	terminus drush $(ARG_1).$(ARG_2) -- user-add-role administrator admin_multidev@test.com
@@ -141,7 +141,7 @@ term_update_live: ## Terminus update live
 term_update_mdev: ## Terminus update multidev
 	$(MAKE) term_auth
 	
-	terminus drush $(ARG_1).$(ARG_2) -- config:set locale.settings translation.import_enabled 0 -y
+	#terminus drush $(ARG_1).$(ARG_2) -- config:set locale.settings translation.import_enabled 0 -y
 	terminus drush $(ARG_1).$(ARG_2) -- updb -y
 	terminus drush $(ARG_1).$(ARG_2) -- cr
 
@@ -149,7 +149,7 @@ term_update_mdev: ## Terminus update multidev
 	terminus drush $(ARG_1).$(ARG_2) -- cr
 	
 	#terminus drush $(ARG_1).$(ARG_2) -- deploy
-	terminus drush $(ARG_1).$(ARG_2) -- cset tfa.settings enabled 0 -y
+	#terminus drush $(ARG_1).$(ARG_2) -- cset tfa.settings enabled 0 -y
 	
 fox_brand: ## Local brand installation
 	lando drush en fox
@@ -298,6 +298,10 @@ term_fox_brand_migrate: ## Terminus brand migrate: brand_id brand_title domain
 	SET brand TO $(ARG_1);\
 	SET brand_title TO $(ARG_2);\
 	\
+	SELECT nid FROM node.product WHERE title LIKE '@brand_title%' AND status=1 LIMIT 1 INTO product;\
+	SELECT nid FROM node.article WHERE title=placeholder AND status=1 LIMIT 1 INTO article;\
+	SELECT nid FROM node.tool WHERE field_domain_access = @brand LIMIT 1 INTO tool;\
+	\
 	USE taxonomy_term.brand;\
 	PRINT 'Brand @brand_title';\
 	SELECT tid WHERE field_domain_access = @brand AND status = 0 AND name='Brand @brand_title' INTO brand_tid;\
@@ -313,6 +317,9 @@ term_fox_brand_migrate: ## Terminus brand migrate: brand_id brand_title domain
 	\
 	SELECT tid WHERE field_domain_access = @brand AND status = 0 AND tid <> @main_tid INTO childs;\
 	REPLACE field_domain_source WITH @brand, parent WITH @main_tid FOR @childs;\
+	IF @product.0.nid > 0 THEN REPLACE field_our_products_cards WITH @product.0.nid FOR @childs;\
+	IF @article.0.nid > 0 THEN REPLACE field_discover_more_cards WITH @article.0.nid FOR @childs;\
+	IF @tool.0.nid > 0 THEN REPLACE field_tools_cards WITH @tool.0.nid FOR @childs;\
 	PRINT Replaced brands TYPE success;\
 	\
 	SELECT id FROM cp_header_settings WHERE id=@brand INTO header;\
@@ -325,7 +332,7 @@ term_fox_brand_migrate: ## Terminus brand migrate: brand_id brand_title domain
 	\
 	PRINT Change brand for /admin/config/domain/edit/@brand;\
 	PRINT Go to /admin/config/system/site-information?domain_config_ui_domain=@brand&domain_config_ui_language=;\
-	PRINT Go to /admin/content?title=&type=All&status=All&name=&langcode=All&field_domain_access_target_id=@brand&field_np_search_exclude_value=
+	PRINT Go to /admin/content?title=&type=All&status=2&name=&langcode=All&field_domain_access_target_id=@brand&field_np_search_exclude_value=;\
 	\
 	PRINT FINISHED type success;\
 	QUIT\
